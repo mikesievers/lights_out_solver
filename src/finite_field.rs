@@ -2,11 +2,11 @@ use std::fmt;
 
 use std::ops::{Add, Div, Mul, Sub};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct GFElement {
     // Define a Galois (Finite) Field element
-    value: i32,
-    modulus: i32,
+    pub value: i32,
+    pub modulus: i32,
 }
 
 impl GFElement {
@@ -96,6 +96,7 @@ impl GFElement {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::GFElement;
     use rstest::rstest;
