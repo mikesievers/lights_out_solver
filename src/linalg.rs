@@ -195,4 +195,52 @@ mod tests {
             format!("{}", matrix_rref)
         );
     }
+
+    #[test]
+    fn test_solvable() {
+        // Test whether a matrix is marked as solvable
+        let rows = vec![
+            vec![
+                GFElement::new(1, 2),
+                GFElement::new(0, 2),
+                GFElement::new(1, 2),
+            ],
+            vec![
+                GFElement::new(0, 2),
+                GFElement::new(1, 2),
+                GFElement::new(1, 2),
+            ],
+            vec![
+                GFElement::new(0, 2),
+                GFElement::new(0, 2),
+                GFElement::new(0, 2),
+            ],
+        ];
+        let matrix = Matrix::new(rows);
+        assert_eq!(matrix.to_rref().is_solvable(), true);
+    }
+
+    fn test_unsolvable() {
+        // Test whether a matrix is marked as unsolvable
+        let rows = vec![
+            vec![
+                GFElement::new(1, 2),
+                GFElement::new(0, 2),
+                GFElement::new(1, 2),
+            ],
+            vec![
+                GFElement::new(0, 2),
+                GFElement::new(1, 2),
+                GFElement::new(1, 2),
+            ],
+            vec![
+                GFElement::new(0, 2),
+                GFElement::new(0, 2),
+                // Last "light" is 1 but no switches influence it
+                GFElement::new(1, 2),
+            ],
+        ];
+        let matrix = Matrix::new(rows);
+        assert_eq!(matrix.to_rref().is_solvable(), false);
+    }
 }
