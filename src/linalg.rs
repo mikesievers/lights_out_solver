@@ -22,6 +22,9 @@ impl Matrix {
         'next_row: for row_idx in 0..self.rows.len() {
             // Verify that the first column starts with a non-zero number
             for col_idx in 0..self.rows[0].len() {
+                // First, if the first column does not start with a non-zero number,
+                // try to find a row that does
+
                 match new_rows[row_idx][col_idx].value {
                     // If zero, check if another column is not null and then swap
                     0 => {
@@ -30,35 +33,17 @@ impl Matrix {
                                 // A lower row has a non-zero element in the leading column,
                                 // swap, normalize and zero the rows below it
                                 new_rows.swap(row_idx, lower_row_idx);
-
-                                // Scale the current row by its first element
-                                let scale = new_rows[row_idx][col_idx];
-                                for scale_col_idx in col_idx..n_cols {
-                                    new_rows[row_idx][scale_col_idx] =
-                                        new_rows[row_idx][scale_col_idx] / scale;
-                                }
-                                // reduce all other rows
-                                for other_row_idx in 0..n_rows {
-                                    if other_row_idx == row_idx {
-                                        continue;
-                                    }
-                                    if new_rows[other_row_idx][col_idx].value != 0 {
-                                        // A leading non-zero element exists, scale the current row
-                                        // accordingly and subtract it from the lower row to zero leading value
-                                        let scale = new_rows[other_row_idx][col_idx];
-                                        for other_col_idx in col_idx..n_cols {
-                                            new_rows[other_row_idx][other_col_idx] = new_rows
-                                                [other_row_idx][other_col_idx]
-                                                - scale * new_rows[row_idx][other_col_idx];
-                                        }
-                                    }
-                                }
-                                // Scaling and reducing has taken place, proceed to next row
-                                continue 'next_row;
                             }
                         }
                     }
-                    // If non-zero value, use this value to reduce lower rows
+                    // Do nothing if the first number is non-zero
+                    _ => {}
+                }
+
+                match new_rows[row_idx][col_idx].value {
+                    // This time, if it's 0, when know there is no other non-zero-starting column
+                    0 => {}
+                    // If non-zero value, use this value to reduce other rows
                     _ => {
                         // Scale the current row by its first element
                         let scale = new_rows[row_idx][col_idx];
@@ -66,7 +51,7 @@ impl Matrix {
                             new_rows[row_idx][scale_col_idx] =
                                 new_rows[row_idx][scale_col_idx] / scale;
                         }
-                        // zero all lower columns
+                        // zero all other columns
                         for other_row_idx in 0..n_rows {
                             if other_row_idx == row_idx {
                                 continue;
