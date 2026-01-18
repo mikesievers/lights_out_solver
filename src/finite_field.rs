@@ -1,3 +1,5 @@
+use std::fmt;
+
 use std::ops::{Add, Div, Mul, Sub};
 
 #[derive(Debug, PartialEq)]
@@ -20,12 +22,33 @@ impl GFElement {
     }
 }
 
+impl fmt::Display for GFElement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
+
 impl Add for GFElement {
     type Output = GFElement;
 
     fn add(self, other: GFElement) -> Self {
         assert!(self.modulus == other.modulus);
-        GFElement::new((self.value + other.value) % self.modulus, self.modulus)
+        GFElement::new(
+            (self.value + other.value).rem_euclid(self.modulus),
+            self.modulus,
+        )
+    }
+}
+
+impl Sub for GFElement {
+    type Output = GFElement;
+
+    fn sub(self, other: GFElement) -> Self {
+        assert!(self.modulus == other.modulus);
+        GFElement::new(
+            (self.value - other.value).rem_euclid(self.modulus),
+            self.modulus,
+        )
     }
 }
 
@@ -38,10 +61,28 @@ mod tests {
     #[case::one_plus_one(1, 1, 2)]
     #[case::zero_plus_zero(0, 0, 0)]
     #[case::modulus_works(3, 4, 1)]
+    #[case::negative_cycles(3, -5, 1)]
     fn test_add(#[case] a_val: i32, #[case] b_val: i32, #[case] expected: i32) {
         let a = GFElement::new(a_val, 3);
         let b = GFElement::new(b_val, 3);
         let c = GFElement::new(expected, 3);
         assert_eq!(a + b, c);
+    }
+
+    #[rstest]
+    #[case::three_minus_one(3, 1, 2)]
+    #[case::negative_cycles(1, 2, 2)]
+    fn test_sub(#[case] a: i32, #[case] b: i32, #[case] expected: i32) {
+        let a = GFElement::new(a, 3);
+        let b = GFElement::new(b, 3);
+        let c = GFElement::new(expected, 3);
+        assert_eq!(a - b, c);
+    }
+
+    #[test]
+    fn test_display() {
+        let a = GFElement::new(2, 3);
+        let expected = "2";
+        assert_eq!(format!("{a}"), expected);
     }
 }
