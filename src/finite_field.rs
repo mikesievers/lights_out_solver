@@ -52,11 +52,24 @@ impl Sub for GFElement {
     }
 }
 
+impl Mul for GFElement {
+    type Output = GFElement;
+
+    fn mul(self, other: GFElement) -> Self {
+        assert_eq!(self.modulus, other.modulus);
+        GFElement::new(
+            (self.value * other.value).rem_euclid(self.modulus),
+            self.modulus,
+        )
+    }
+}
+
 mod tests {
     use super::GFElement;
     use rstest::rstest;
 
     #[rstest]
+    #[case::zero_plus_zero(0, 0, 0)]
     #[case::two_plus_one(2, 1, 0)]
     #[case::one_plus_one(1, 1, 2)]
     #[case::zero_plus_zero(0, 0, 0)]
@@ -84,5 +97,17 @@ mod tests {
         let a = GFElement::new(2, 3);
         let expected = "2";
         assert_eq!(format!("{a}"), expected);
+    }
+
+    #[rstest]
+    #[case(1, 1, 1)]
+    #[case(2, 0, 0)]
+    #[case(2, 2, 1)]
+    #[case(2, 3, 0)]
+    fn test_mul(#[case] a: i32, #[case] b: i32, #[case] expected: i32) {
+        let a = GFElement::new(a, 3);
+        let b = GFElement::new(b, 3);
+        let expected = GFElement::new(expected, 3);
+        assert_eq!(a * b, expected);
     }
 }
