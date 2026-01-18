@@ -64,6 +64,38 @@ impl Mul for GFElement {
     }
 }
 
+impl Div for GFElement {
+    type Output = GFElement;
+
+    fn div(self, other: GFElement) -> Self {
+        assert_eq!(self.modulus, other.modulus);
+        if other.value == 0 {
+            panic!("Division by 0 attempted");
+        }
+
+        GFElement {
+            value: (self.value * other.mult_inverse().value).rem_euclid(self.modulus),
+            modulus: self.modulus,
+        }
+    }
+}
+
+// Find the multiplicative inverse, needed for Division
+impl GFElement {
+    fn mult_inverse(&self) -> GFElement {
+        for i in 0..self.modulus {
+            if (self.value * i).rem_euclid(self.modulus) == 1 {
+                return GFElement::new(i, self.modulus);
+            }
+        }
+        let msg = format!(
+            "Multiplicative inverse for value {} not found for base {}",
+            self.value, self.modulus
+        );
+        panic!("{}", msg);
+    }
+}
+
 mod tests {
     use super::GFElement;
     use rstest::rstest;
@@ -92,13 +124,6 @@ mod tests {
         assert_eq!(a - b, c);
     }
 
-    #[test]
-    fn test_display() {
-        let a = GFElement::new(2, 3);
-        let expected = "2";
-        assert_eq!(format!("{a}"), expected);
-    }
-
     #[rstest]
     #[case(1, 1, 1)]
     #[case(2, 0, 0)]
@@ -108,6 +133,33 @@ mod tests {
         let a = GFElement::new(a, 3);
         let b = GFElement::new(b, 3);
         let expected = GFElement::new(expected, 3);
+
         assert_eq!(a * b, expected);
+    }
+
+    #[rstest]
+    #[case(1, 1, 3, 1)]
+    #[case(2, 2, 3, 1)]
+    #[case(1, 2, 3, 2)]
+    #[case(2, 3, 7, 3)]
+    #[case(5, 9, 13, 2)]
+    fn test_div(
+        #[case] dividend: i32,
+        #[case] divisor: i32,
+        #[case] modulus: i32,
+        #[case] expected: i32,
+    ) {
+        let dividend = GFElement::new(dividend, modulus);
+        let divisor = GFElement::new(divisor, modulus);
+        let expected = GFElement::new(expected, modulus);
+
+        assert_eq!(dividend / divisor, expected);
+    }
+
+    #[test]
+    fn test_display() {
+        let a = GFElement::new(2, 3);
+        let expected = "2";
+        assert_eq!(format!("{a}"), expected);
     }
 }
