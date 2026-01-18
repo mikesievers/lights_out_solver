@@ -12,7 +12,7 @@ impl Matrix {
     }
 
     pub fn to_rref(&self) -> Matrix {
-        // Convert the matrix in row echelon form
+        // Convert the matrix to reduced row echelon form
         let n_rows = self.rows.len();
         let n_cols = self.rows[0].len();
 
@@ -153,5 +153,46 @@ mod tests {
         assert_eq!(format!("{}", matrix_rref), "1 0\n0 1");
         // Verify that rref form stays
         assert_eq!(format!("{}", matrix_rref.to_rref()), "1 0\n0 1");
+    }
+
+    #[test]
+    fn test_rref_larger_matrix() {
+        // Construct a 3x4 matrix
+        //  1 2 3 4
+        //  0 1 2 3
+        //  1 1 1 1
+        let rows = vec![
+            vec![
+                GFElement::new(1, 5),
+                GFElement::new(2, 5),
+                GFElement::new(3, 5),
+                GFElement::new(4, 5),
+            ],
+            vec![
+                GFElement::new(0, 5),
+                GFElement::new(1, 5),
+                GFElement::new(2, 5),
+                GFElement::new(3, 5),
+            ],
+            vec![
+                GFElement::new(1, 5),
+                GFElement::new(1, 5),
+                GFElement::new(1, 5),
+                GFElement::new(1, 5),
+            ],
+        ];
+        let matrix = Matrix::new(rows);
+        let matrix_rref = matrix.to_rref();
+
+        // Expected RREF:
+        //  1 0 4 3
+        //  0 1 2 3
+        //  0 0 0 0
+        assert_eq!(format!("{}", matrix_rref), "1 0 4 3\n0 1 2 3\n0 0 0 0");
+        // Verify that rref form stays
+        assert_eq!(
+            format!("{}", matrix_rref.to_rref()),
+            format!("{}", matrix_rref)
+        );
     }
 }
