@@ -75,6 +75,46 @@ impl Matrix {
 
         Matrix::new(new_rows)
     }
+
+    pub fn is_solvable(&self) -> bool {
+        // Determine whether the puzzle corresponding to the matrix is solvable.
+        // It will be assumed that the right most column is the target vector of
+        // the augmented matrix
+
+        // First, check whether any row is unsolvable
+        if self.is_any_row_unsolvable() {
+            return false;
+        }
+
+        // If no row is unsolvable and every row has a pivot, the puzzle is
+        // solvable
+        self.every_row_has_a_pivot()
+    }
+
+    fn every_row_has_a_pivot(&self) -> bool {
+        // Check whether every row has a pivot (leading 1 in coefficient part)
+        // An all-zeros row is considered to have a pivot
+        // A non-zero row has a pivot if the first non-zero element in the coefficient
+        // part (excluding the last column) is 1
+        self.rows.iter().all(|row| {
+            row.iter().all(|x| x.value == 0)
+                || row
+                    .iter()
+                    .take(row.len() - 1)
+                    .find(|x| x.value != 0)
+                    .map_or(false, |x| x.value == 1)
+        })
+    }
+
+    fn is_any_row_unsolvable(&self) -> bool {
+        // Any row of the form (0,0,0,...,k) is unsolvable for k<>0.
+        // This would correspond to a non zero value being the result of a sum
+        // of values multiplied by 0.
+        self.rows.iter().any(|row| {
+            row.iter().take(row.len() - 1).all(|x| x.value == 0)
+                && row.last().map_or(false, |x| x.value != 0)
+        })
+    }
 }
 
 impl Display for Matrix {
@@ -118,6 +158,7 @@ mod tests {
     use super::Matrix;
     use crate::finite_field::GFElement;
     use itertools::Itertools;
+    use rstest::rstest;
 
     #[test]
     fn test_matrix_display() {
@@ -220,6 +261,7 @@ mod tests {
         assert_eq!(matrix.to_rref().is_solvable(), true);
     }
 
+    #[test]
     fn test_unsolvable() {
         // Test whether a matrix is marked as unsolvable
         let rows = vec![
@@ -242,5 +284,29 @@ mod tests {
         ];
         let matrix = Matrix::new(rows);
         assert_eq!(matrix.to_rref().is_solvable(), false);
+    }
+
+    #[rstest]
+    #[case(vec![vec![GFElement::new(0,2),GFElement::new(0,2),GFElement::new(1,2)]], true)]
+    #[case(vec![vec![GFElement::new(0,2),GFElement::new(0,2),GFElement::new(0,2)]], false)]
+    #[case(vec![vec![GFElement::new(1,2),GFElement::new(0,2),GFElement::new(1,2)]], false)]
+    fn test_any_row_unsolvable(#[case] rows: Vec<Vec<GFElement>>, #[case] expected: bool) {
+        assert_eq!(
+            Matrix::new(rows).to_rref().is_any_row_unsolvable(),
+            expected
+        );
+    }
+
+    #[rstest]
+    #[case(vec![vec![GFElement::new(0,2),GFElement::new(0,2),GFElement::new(0,2)]], true)]
+    #[case(vec![vec![GFElement::new(0,2),GFElement::new(1,2),GFElement::new(1,2)]], true)]
+    #[case(vec![vec![GFElement::new(2,2),GFElement::new(0,2),GFElement::new(1,2)]], false)]
+    #[case(vec![vec![GFElement::new(0,2),GFElement::new(2,2),GFElement::new(1,2)]], false)]
+    #[case(vec![
+        vec![GFElement::new(0,3),GFElement::new(1,3),GFElement::new(1,3)],
+        vec![GFElement::new(0,3),GFElement::new(2,3),GFElement::new(2,3)]
+        ], false)]
+    fn test_every_row_has_a_pivot(#[case] rows: Vec<Vec<GFElement>>, #[case] expected: bool) {
+        assert_eq!(Matrix::new(rows).every_row_has_a_pivot(), expected);
     }
 }
