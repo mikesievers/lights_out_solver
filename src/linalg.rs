@@ -81,14 +81,32 @@ impl Matrix {
         // It will be assumed that the right most column is the target vector of
         // the augmented matrix
 
+        let matrix_rref = self.to_rref();
+
         // First, check whether any row is unsolvable
-        if self.is_any_row_unsolvable() {
+        if matrix_rref.is_any_row_unsolvable() {
             return false;
         }
 
         // If no row is unsolvable and every row has a pivot, the puzzle is
         // solvable
-        self.every_row_has_a_pivot()
+        matrix_rref.unaugmented_matrix().every_row_has_a_pivot()
+    }
+
+    fn unaugmented_matrix(&self) -> Self {
+        // Create a new matrix without the last column (the augmentation)
+        let row_len = self
+            .rows
+            .first()
+            .expect("Matrix should have at least one row")
+            .len();
+        let rows = self
+            .rows
+            .iter()
+            .map(|row| row.iter().take(row_len - 1).copied().collect_vec())
+            .collect_vec();
+
+        Self::new(rows)
     }
 
     fn every_row_has_a_pivot(&self) -> bool {
@@ -100,10 +118,37 @@ impl Matrix {
             row.iter().all(|x| x.value == 0)
                 || row
                     .iter()
-                    .take(row.len() - 1)
+                    .take(row.len())
                     .find(|x| x.value != 0)
                     .map_or(false, |x| x.value == 1)
         })
+    }
+
+    fn every_column_has_a_pivot(&self) -> bool {
+        // Transpose the matrix and check whether every row has a pivot
+        // The augmentation of the matrix is ignored
+
+        self.transpose().every_row_has_a_pivot()
+    }
+
+    fn transpose(&self) -> Self {
+        // Return a new transposed matrix
+
+        let rows = (0..self
+            .rows
+            .first()
+            .expect("Matrix should have one row at least")
+            .len())
+            .map(|col_idx| {
+                (0..self.rows.len())
+                    .map(|row_idx| {
+                        self.rows[col_idx][row_idx] // Transposition occurs here
+                    })
+                    .collect_vec()
+            })
+            .collect_vec();
+
+        Self::new(rows)
     }
 
     fn is_any_row_unsolvable(&self) -> bool {
@@ -114,6 +159,23 @@ impl Matrix {
             row.iter().take(row.len() - 1).all(|x| x.value == 0)
                 && row.last().map_or(false, |x| x.value != 0)
         })
+    }
+
+    pub fn solution(&self) -> Option<Vec<GFElement>> {
+        // If the Puzzle is solvable, return the last column of the RREF form matrix
+        // NOTE: The matrix is turned to RREF format multiple times, once in is_solvable
+        // and once explicitly after. This is to not have to verify if it is in RREF form.
+        if !self.is_solvable() {
+            return None;
+        }
+
+        let augmentation = self
+            .to_rref()
+            .rows
+            .iter()
+            .map(|row| row.iter().copied().last().expect("Empty row not expected"))
+            .collect_vec();
+        Some(augmentation)
     }
 }
 
@@ -298,15 +360,49 @@ mod tests {
     }
 
     #[rstest]
-    #[case(vec![vec![GFElement::new(0,2),GFElement::new(0,2),GFElement::new(0,2)]], true)]
-    #[case(vec![vec![GFElement::new(0,2),GFElement::new(1,2),GFElement::new(1,2)]], true)]
-    #[case(vec![vec![GFElement::new(2,2),GFElement::new(0,2),GFElement::new(1,2)]], false)]
-    #[case(vec![vec![GFElement::new(0,2),GFElement::new(2,2),GFElement::new(1,2)]], false)]
+    #[case(vec![vec![GFElement::new(0,2),GFElement::new(0,2)]], true)]
+    #[case(vec![vec![GFElement::new(0,2),GFElement::new(1,2)]], true)]
+    #[case(vec![vec![GFElement::new(2,3),GFElement::new(0,3)]], false)]
+    #[case(vec![vec![GFElement::new(0,3),GFElement::new(2,3)]], false)]
     #[case(vec![
-        vec![GFElement::new(0,3),GFElement::new(1,3),GFElement::new(1,3)],
-        vec![GFElement::new(0,3),GFElement::new(2,3),GFElement::new(2,3)]
+        vec![GFElement::new(0,3),GFElement::new(1,3)],
+        vec![GFElement::new(0,3),GFElement::new(2,3)]
         ], false)]
     fn test_every_row_has_a_pivot(#[case] rows: Vec<Vec<GFElement>>, #[case] expected: bool) {
         assert_eq!(Matrix::new(rows).every_row_has_a_pivot(), expected);
+    }
+
+    #[rstest]
+    #[case(vec![
+        vec![GFElement::new(1,2),GFElement::new(0,2)],
+        vec![GFElement::new(0,2),GFElement::new(1,2)],
+        ], true)]
+    #[case(vec![
+        vec![GFElement::new(1,2),GFElement::new(0,2)],
+        vec![GFElement::new(0,2),GFElement::new(0,2)],
+        ], true)]
+    #[case(vec![
+        vec![GFElement::new(1,2),GFElement::new(1,2)],
+        vec![GFElement::new(0,2),GFElement::new(0,2)],
+        ], true)]
+    #[case(vec![
+        vec![GFElement::new(0,2),GFElement::new(0,2)],
+        vec![GFElement::new(1,2),GFElement::new(1,2)],
+        ], true)]
+    fn test_every_column_has_a_pivot(#[case] rows: Vec<Vec<GFElement>>, #[case] expected: bool) {
+        assert_eq!(Matrix::new(rows).every_column_has_a_pivot(), expected);
+    }
+
+    #[rstest]
+    #[case(vec![
+        vec![GFElement::new(1,2), GFElement::new(0,2), GFElement::new(1,2)],
+        vec![GFElement::new(0,2), GFElement::new(1,2), GFElement::new(1,2)],
+    ], vec![GFElement::new(1,2),GFElement::new(1,2)])]
+    #[case(vec![
+        vec![GFElement::new(2,7), GFElement::new(3,7), GFElement::new(5,7)],
+        vec![GFElement::new(2,7), GFElement::new(6,7), GFElement::new(1,7)],
+    ], vec![GFElement::new(1,7),GFElement::new(1,7)])]
+    fn test_solution(#[case] rows: Vec<Vec<GFElement>>, #[case] expected: Vec<GFElement>) {
+        assert_eq!(Matrix::new(rows).solution(), Some(expected));
     }
 }
